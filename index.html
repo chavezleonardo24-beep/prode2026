@@ -605,9 +605,10 @@
         <div class="login-icon">⚽</div>
         <div class="login-title">CARGÁ TUS PRONÓSTICOS</div>
         <div class="login-sub">Ingresá tu nombre para ver y editar tus predicciones</div>
-        <div class="login-row">
-          <input class="score-in" type="text" id="login-nombre" placeholder="Tu nombre..." style="width:auto;flex:1;height:40px;border-radius:999px;padding:0 16px;font-family:var(--font-body);font-size:13px;" />
-          <button class="btn btn-primary" onclick="loginUser()">Entrar</button>
+        <div class="login-row" style="flex-direction:column;align-items:stretch;max-width:280px;margin:0 auto;gap:8px;">
+          <input class="score-in" type="text" id="login-nombre" placeholder="Tu nombre..." style="width:100%;height:40px;border-radius:999px;padding:0 16px;font-family:var(--font-body);font-size:13px;" />
+          <input class="score-in" type="number" id="login-pin" placeholder="PIN (4 números)" maxlength="4" min="0" max="9999" style="width:100%;height:40px;border-radius:999px;padding:0 16px;font-family:var(--font-body);font-size:13px;" />
+          <button class="btn btn-primary" onclick="loginUser()" style="width:100%;height:40px;">Entrar</button>
         </div>
       </div>
     </div>
@@ -648,6 +649,7 @@
     <div class="modal">
       <div class="modal-title">UNIRME <button class="modal-close" onclick="cerrarModal('registro')">×</button></div>
       <div class="field"><label>Nombre *</label><input type="text" id="reg-nombre" placeholder="Ej: Martín G." /></div>
+      <div class="field"><label>PIN (4 números) *</label><input type="number" id="reg-pin" placeholder="Ej: 1234" maxlength="4" min="0" max="9999" /></div>
       <div class="field"><label>WhatsApp</label><input type="text" id="reg-wa" placeholder="+54 299 ..." /></div>
       <div class="field"><label>Email</label><input type="email" id="reg-email" placeholder="opcional" /></div>
       <div class="modal-footer">
@@ -788,6 +790,17 @@ async function cargarFixture() {
   if (currentUser) renderPron();
 }
 
+function formatFecha(fecha) {
+  if (!fecha) return '';
+  // Si viene en formato ISO (2026-06-11T03:00:00.000Z)
+  if (fecha.includes('T')) {
+    const d = new Date(fecha);
+    return d.toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric', timeZone:'America/Argentina/Buenos_Aires' });
+  }
+  // Si ya viene en formato dd/MM/yyyy lo devuelve igual
+  return fecha;
+}
+
 function filtrar(grupo, btn) {
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
@@ -816,7 +829,7 @@ function renderFixture(partidos) {
           ? `<div class="score-pill">${m.gol_l ?? '—'}</div>
              <span class="score-sep">:</span>
              <div class="score-pill">${m.gol_v ?? '—'}</div>`
-          : `<div class="match-time">${m.fecha||''}<br/>${m.hora||''}</div>`}
+          : `<div class="match-time">${formatFecha(m.fecha)}<br/>${m.hora||''}</div>`}
         ${live ? '<span class="badge badge-live" style="margin-left:4px;font-size:9px">LIVE</span>' : ''}
       </div>
       <div class="match-team right">${m.visitante}</div>
@@ -827,8 +840,18 @@ function renderFixture(partidos) {
 
 // ── PRONÓSTICOS ───────────────────────────────────────────────
 async function loginUser() {
-  const n = document.getElementById('login-nombre').value.trim();
-  if (!n) { document.getElementById('login-nombre').focus(); return; }
+  const n   = document.getElementById('login-nombre').value.trim();
+  const pin = document.getElementById('login-pin').value.trim();
+  if (!n)   { document.getElementById('login-nombre').focus(); return; }
+  if (!pin) { document.getElementById('login-pin').focus(); toast('Ingresá tu PIN', true); return; }
+
+  // Verificar PIN contra el Sheet
+  const verify = await apiGet('verificarPin', '&nombre=' + encodeURIComponent(n) + '&pin=' + encodeURIComponent(pin));
+  if (!verify?.ok) {
+    toast(verify?.mensaje || 'Nombre o PIN incorrecto ❌', true);
+    return;
+  }
+
   currentUser = n;
   document.getElementById('login-area').style.display = 'none';
   document.getElementById('pron-area').style.display = 'block';
@@ -929,7 +952,13 @@ function renderStats(ranking) {
 // ── REGISTRO ──────────────────────────────────────────────────
 async function registrar() {
   const nombre = document.getElementById('reg-nombre').value.trim();
+  const pin    = document.getElementById('reg-pin').value.trim();
   if (!nombre) { document.getElementById('reg-nombre').focus(); return; }
+  if (!pin || pin.length !== 4 || isNaN(pin)) { 
+    toast('El PIN debe ser de 4 números', true); 
+    document.getElementById('reg-pin').focus(); 
+    return; 
+  }
   const btn = document.getElementById('btn-reg');
   btn.innerHTML = '<span class="spin"></span> Guardando...';
   btn.disabled = true;
@@ -937,6 +966,7 @@ async function registrar() {
   const data = await apiPost({
     accion: 'registrar',
     nombre,
+    pin,
     whatsapp: document.getElementById('reg-wa').value.trim(),
     email:    document.getElementById('reg-email').value.trim()
   });
@@ -946,7 +976,7 @@ async function registrar() {
   if (data?.ok) {
     cerrarModal('registro');
     toast('🎉 ' + (data.mensaje || '¡Registrado correctamente!'));
-    ['reg-nombre','reg-wa','reg-email'].forEach(id => document.getElementById(id).value = '');
+    ['reg-nombre','reg-pin','reg-wa','reg-email'].forEach(id => document.getElementById(id).value = '');
     cargarRanking();
   } else {
     toast((data?.mensaje || 'Error al registrar'), true);
