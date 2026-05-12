@@ -39,7 +39,7 @@
       content: '';
       position: fixed; inset: 0;
       background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
-      pointer-events: none; z-index: 999; opacity: .4;
+      pointer-events: none; z-index: 0; opacity: .4;
     }
 
     /* ── HERO ─────────────────────────────────────── */
@@ -530,11 +530,11 @@
     <div class="hero-ball">⚽</div>
     <div class="hero-title">PRODE<br /><span>MUNDIAL</span><br />2026</div>
     <div class="hero-sub">🇺🇸 Estados Unidos · 🇨🇦 Canadá · 🇲🇽 México</div>
-    <div class="hero-actions">
-      <button class="btn btn-primary" onclick="abrirModal('registro')">+ Unirme al prode</button>
-      <button class="btn btn-outline" onclick="switchTab('fixture')">Ver fixture</button>
-    </div>
   </header>
+  <div class="hero-actions" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;padding:0 16px 24px;">
+    <button class="btn btn-primary" onclick="abrirModal('registro')">+ Unirme al prode</button>
+    <button class="btn btn-outline" onclick="switchTab('fixture')">Ver fixture</button>
+  </div>
 
   <!-- CONFIG APPS SCRIPT -->
   <div id="config-banner">
