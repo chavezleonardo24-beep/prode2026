@@ -407,7 +407,8 @@ function switchTab(tab){
 <!-- HERO -->
 <header class="hero">
   <span class="hero-ball">⚽</span>
-  <div class="hero-title">PRODE<br/><em>MUNDIAL</em><br/>2026</div>
+  <div class="hero-badge">🏆 Mundial 2026 · Prode Croma</div>
+  <div class="hero-title">PRODE<br/><em>CROMA</em><br/>2026</div>
   <div class="hero-flags">🇺🇸 🇨🇦 🇲🇽</div>
   <div class="hero-sub">11 de junio · 19 de julio de 2026</div>
   <div class="hero-btns">
@@ -505,6 +506,27 @@ function switchTab(tab){
       <div class="section-title" id="pron-title">MIS PRONÓSTICOS</div>
       <button class="btn btn-ghost btn-sm" onclick="logoutUser()">Salir</button>
     </div>
+
+    <!-- FOTO DE PERFIL -->
+    <div style="display:flex;align-items:center;gap:16px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:16px;">
+      <div style="position:relative;flex-shrink:0;">
+        <div id="foto-preview" style="width:80px;height:107px;border-radius:10px;overflow:hidden;background:var(--bg3);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;">
+          <span id="foto-placeholder" style="font-size:32px;">👤</span>
+          <img id="foto-img" src="" style="display:none;width:100%;height:100%;object-fit:cover;" />
+        </div>
+        <label for="foto-input" style="position:absolute;bottom:-8px;right:-8px;width:28px;height:28px;background:var(--green);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;" title="Cambiar foto">📷</label>
+        <input type="file" id="foto-input" accept="image/*" style="display:none" onchange="previsualizarFoto(this)" />
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:16px;font-weight:600;margin-bottom:4px" id="perfil-nombre"></div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Hacé clic en 📷 para subir tu foto de perfil</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-primary btn-sm" id="btn-subir-foto" onclick="subirFoto()" style="display:none">Subir foto</button>
+          <div id="foto-status" style="font-size:12px;color:var(--muted);padding-top:6px;"></div>
+        </div>
+      </div>
+    </div>
+
     <div class="pron-wrap">
       <div class="pron-head">
         <div style="text-align:right">Local</div>
@@ -539,7 +561,7 @@ function switchTab(tab){
 <div class="overlay" id="modal-registro">
   <div class="modal">
     <div class="modal-title">UNIRME <button class="modal-close" onclick="cerrarModal('registro')">×</button></div>
-    <div class="field"><label>Nombre *</label><input type="text" id="reg-nombre" placeholder="Ej: Masterangelo 3p."/></div>
+    <div class="field"><label>Nombre *</label><input type="text" id="reg-nombre" placeholder="Ej: Martín G."/></div>
     <div class="field"><label>PIN de 4 números *</label><input type="number" id="reg-pin" placeholder="Ej: 1234" min="0" max="9999"/></div>
     <div class="field"><label>WhatsApp</label><input type="text" id="reg-wa" placeholder="+54 299 ..."/></div>
     <div class="field"><label>Email</label><input type="email" id="reg-email" placeholder="opcional"/></div>
@@ -663,9 +685,13 @@ async function cargarRanking(){
     const ini=p.nombre.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase();
     const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
     const cls=i===0?'p1':i===1?'p2':i===2?'p3':'';
+    const fotoUrl=p.foto_url||'';
+    const avatarHtml=fotoUrl
+      ? `<div class="avatar" style="padding:0;overflow:hidden"><img src="${fotoUrl}" style="width:100%;height:100%;object-fit:cover;" /></div>`
+      : `<div class="avatar" style="background:${av.bg};color:${av.fg}">${ini}</div>`;
     return `<div class="rank-row ${cls}" style="animation-delay:${i*35}ms">
       <div class="pos">${medal||(i+1)}</div>
-      <div class="avatar" style="background:${av.bg};color:${av.fg}">${ini}</div>
+      ${avatarHtml}
       <div class="player-name">${p.nombre}</div>
       <div class="cell"><span class="badge b-green">${p.exactos||0}</span></div>
       <div class="cell"><span class="badge b-gold">${p.aciertos_1x2||0}</span></div>
@@ -748,6 +774,8 @@ async function loginUser(){
   document.getElementById('login-area').style.display='none';
   document.getElementById('pron-area').style.display='block';
   document.getElementById('pron-title').textContent=n.toUpperCase();
+  document.getElementById('perfil-nombre').textContent=n;
+  cargarFotoPerfil(n);
   const data=await apiGet('pronosticos','&nombre='+encodeURIComponent(n));
   pronGuardados={};
   if(data?.ok)(data.pronosticos||[]).forEach(p=>{
@@ -764,6 +792,7 @@ function logoutUser(){
   document.getElementById('login-nombre').value='';
   document.getElementById('login-pin').value='';
   document.getElementById('save-bar').classList.remove('on');
+  limpiarFoto();
 }
 
 function renderPron(){
@@ -869,6 +898,79 @@ function formatHora(h){
   if(typeof h==='string'&&h.includes('T')) return new Date(h).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Argentina/Buenos_Aires'});
   return String(h).substring(0,5);
 }
+// ── FOTO DE PERFIL ───────────────────────────────────────────
+let fotoFileLocal = null;
+
+async function cargarFotoPerfil(nombre) {
+  const data = await apiGet('getFoto', '&nombre=' + encodeURIComponent(nombre));
+  if (data?.ok && data.url) {
+    mostrarFoto(data.url);
+  }
+}
+
+function previsualizarFoto(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { toast('La foto no puede superar 5MB', true); return; }
+  fotoFileLocal = file;
+  const reader = new FileReader();
+  reader.onload = e => {
+    mostrarFoto(e.target.result);
+    document.getElementById('btn-subir-foto').style.display = 'inline-flex';
+    document.getElementById('foto-status').textContent = 'Foto lista para subir';
+  };
+  reader.readAsDataURL(file);
+}
+
+function mostrarFoto(src) {
+  const img = document.getElementById('foto-img');
+  const ph  = document.getElementById('foto-placeholder');
+  img.src = src;
+  img.style.display = 'block';
+  ph.style.display  = 'none';
+}
+
+function limpiarFoto() {
+  const img = document.getElementById('foto-img');
+  const ph  = document.getElementById('foto-placeholder');
+  img.src = ''; img.style.display = 'none';
+  ph.style.display = 'block';
+  document.getElementById('btn-subir-foto').style.display = 'none';
+  document.getElementById('foto-status').textContent = '';
+  fotoFileLocal = null;
+}
+
+async function subirFoto() {
+  if (!fotoFileLocal || !currentUser) return;
+  const btn = document.getElementById('btn-subir-foto');
+  btn.innerHTML = '<span class="spin"></span> Subiendo...';
+  btn.disabled = true;
+
+  const reader = new FileReader();
+  reader.onload = async e => {
+    const base64 = e.target.result.split(',')[1];
+    const mime   = fotoFileLocal.type;
+    const res = await apiPost({
+      accion: 'subirFoto',
+      nombre: currentUser,
+      pin: document.getElementById('login-pin').value,
+      fotoBase64: base64,
+      mimeType: mime
+    });
+    btn.innerHTML = 'Subir foto'; btn.disabled = false;
+    if (res?.ok) {
+      toast('📸 Foto de perfil actualizada');
+      document.getElementById('foto-status').textContent = '✅ Guardada';
+      document.getElementById('btn-subir-foto').style.display = 'none';
+      fotoFileLocal = null;
+      cargarRanking();
+    } else {
+      toast(res?.mensaje || 'Error al subir la foto', true);
+    }
+  };
+  reader.readAsDataURL(fotoFileLocal);
+}
+
 function toast(msg,err=false){
   const t=document.getElementById('toast');
   t.textContent=msg; t.className='on'+(err?' err':'');
