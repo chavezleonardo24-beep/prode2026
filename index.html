@@ -882,24 +882,30 @@ document.addEventListener('DOMContentLoaded', function(){
   if (cachedRanking) renderRankingData(cachedRanking);
   if (cachedFixture) { fixtureData = cachedFixture; renderFixture(fixtureData); }
 
-  // Restaurar sesión guardada
+  // Restaurar sesión guardada — instantáneo primero, verificar después
   const savedUser = localStorage.getItem('prode_user');
   const savedPin  = localStorage.getItem('prode_pin');
   if (savedUser && savedPin) {
-    document.getElementById('login-nombre').value = savedUser;
-    document.getElementById('login-pin').value    = savedPin;
-    // Verificar que el PIN siga siendo válido y restaurar sesión
+    // 1. Mostrar sesión INMEDIATAMENTE sin esperar al servidor
+    currentUser = savedUser;
+    document.getElementById('login-nombre').value         = savedUser;
+    document.getElementById('login-pin').value            = savedPin;
+    document.getElementById('login-area').style.display   = 'none';
+    document.getElementById('pron-area').style.display    = 'block';
+    document.getElementById('pron-title').textContent     = savedUser.toUpperCase();
+    document.getElementById('perfil-nombre').textContent  = savedUser;
+    actualizarHeroBtns();
+
+    // Foto desde caché si existe
+    const cachedFoto = localStorage.getItem('prode_foto_' + savedUser);
+    if (cachedFoto) mostrarFoto(cachedFoto);
+
+    // 2. Verificar PIN en segundo plano
     apiGet('verificarPin', '&nombre=' + encodeURIComponent(savedUser) + '&pin=' + encodeURIComponent(savedPin))
       .then(v => {
         if (v?.ok) {
-          currentUser = savedUser;
-          document.getElementById('login-area').style.display  = 'none';
-          document.getElementById('pron-area').style.display   = 'block';
-          document.getElementById('pron-title').textContent    = savedUser.toUpperCase();
-          document.getElementById('perfil-nombre').textContent = savedUser;
+          // Sesión válida — cargar foto y pronósticos
           cargarFotoPerfil(savedUser);
-          actualizarHeroBtns();
-          // Cargar pronósticos guardados
           apiGet('pronosticos', '&nombre=' + encodeURIComponent(savedUser)).then(data => {
             if (data?.ok) {
               pronGuardados = {};
@@ -907,12 +913,18 @@ document.addEventListener('DOMContentLoaded', function(){
                 pronGuardados[p.partido_id] = { gl: p.gol_l, gv: p.gol_v };
                 pronLocales[p.partido_id]   = { gl: p.gol_l, gv: p.gol_v };
               });
+              if (fixtureData.length) renderPron();
             }
           });
         } else {
-          // PIN inválido — limpiar sesión
+          // PIN inválido — cerrar sesión silenciosamente
+          currentUser = null;
           localStorage.removeItem('prode_user');
           localStorage.removeItem('prode_pin');
+          document.getElementById('login-area').style.display = 'block';
+          document.getElementById('pron-area').style.display  = 'none';
+          actualizarHeroBtns();
+          toast('Tu sesión expiró, volvé a ingresar', true);
         }
       });
   }
@@ -1424,6 +1436,7 @@ async function cargarFotoPerfil(nombre) {
   const data = await apiGet('getFoto', '&nombre=' + encodeURIComponent(nombre));
   if (data?.ok && data.url) {
     mostrarFoto(data.url);
+    localStorage.setItem('prode_foto_' + nombre, data.url);
   }
 }
 
