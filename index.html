@@ -697,17 +697,59 @@ let fixtureData  = [];
 let pronLocales  = {};
 let pronGuardados = {};
 
-// Init
+// ── CACHE ────────────────────────────────────────────────────
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+
+function cacheSet(key, data) {
+  try {
+    localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data }));
+  } catch(e) {}
+}
+
+function cacheGet(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const { ts, data } = JSON.parse(raw);
+    if (Date.now() - ts > CACHE_TTL) return null;
+    return data;
+  } catch(e) { return null; }
+}
+
+// ── INIT ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function(){
-  if(SCRIPT_URL){
-    cargarRanking();
-    cargarFixture();
-    cargarEstadisticas();
+  // Mostrar datos cacheados instantáneamente
+  const cachedRanking = cacheGet('ranking');
+  const cachedFixture = cacheGet('fixture');
+  if (cachedRanking) renderRankingData(cachedRanking);
+  if (cachedFixture) { fixtureData = cachedFixture; renderFixture(fixtureData); }
+
+  // Cargar todo en paralelo
+  if (SCRIPT_URL) {
+    Promise.all([
+      apiGet('ranking'),
+      apiGet('fixture'),
+      apiGet('estadisticas')
+    ]).then(([rankData, fixData, statsData]) => {
+      if (rankData?.ok)  { cacheSet('ranking', rankData);  renderRankingData(rankData); }
+      if (fixData?.ok)   { cacheSet('fixture', fixData);   fixtureData = fixData.partidos || []; renderFixture(fixtureData); if(currentUser) renderPron(); }
+      if (statsData?.ok) { renderEstadisticasData(statsData); }
+    });
   }
+
   document.querySelectorAll('.overlay').forEach(m=>{
     m.addEventListener('click',e=>{ if(e.target===m) m.classList.remove('on'); });
   });
   iniciarContador();
+
+  // Auto-refresh cada 5 minutos
+  setInterval(() => {
+    if (!SCRIPT_URL) return;
+    Promise.all([apiGet('ranking'), apiGet('fixture')]).then(([r, f]) => {
+      if (r?.ok) { cacheSet('ranking', r); renderRankingData(r); }
+      if (f?.ok) { cacheSet('fixture', f); fixtureData = f.partidos || []; renderFixture(fixtureData); }
+    });
+  }, CACHE_TTL);
 });
 
 // ── API ───────────────────────────────────────────────────────
@@ -744,21 +786,52 @@ function setStatus(msg,type){
 }
 
 // ── RANKING ───────────────────────────────────────────────────
-async function cargarEstadisticas(){
-  const data = await apiGet('estadisticas');
-  if(!data?.ok) return;
+function renderRankingData(data) {
+  const r = data.ranking || [];
+  document.getElementById('s-part').textContent = r.length;
+  if (r[0]?.ultima_act) document.getElementById('s-ultima').textContent = r[0].ultima_act;
+  if (!r.length) {
+    document.getElementById('ranking-list').innerHTML='<div class="empty"><span class="empty-icon">👥</span>Aún no hay participantes</div>';
+    renderStats([]); return;
+  }
+  document.getElementById('ranking-list').innerHTML = r.map((p,i) => {
+    const av = AVATARS[i % AVATARS.length];
+    const ini = p.nombre.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase();
+    const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+    const cls = i===0?'p1':i===1?'p2':i===2?'p3':'';
+    const fotoUrl = p.foto_url || '';
+    const avatarHtml = fotoUrl
+      ? `<div class="avatar" style="padding:0;overflow:hidden"><img src="${fotoUrl}" style="width:100%;height:100%;object-fit:cover;" /></div>`
+      : `<div class="avatar" style="background:${av.bg};color:${av.fg}">${ini}</div>`;
+    const esNuevo = (p.puntos||0) === 0 && (p.pendientes||0) === 104;
+    const mov = p.movimiento || '=';
+    let movHtml = '';
+    if (mov.startsWith('↑'))      movHtml = `<span style="font-size:11px;color:var(--green);font-weight:600;margin-left:4px">${mov}</span>`;
+    else if (mov.startsWith('↓')) movHtml = `<span style="font-size:11px;color:var(--red);font-weight:600;margin-left:4px">${mov}</span>`;
+    else if (!esNuevo)            movHtml = `<span style="font-size:11px;color:var(--muted);margin-left:4px">=</span>`;
+    return `<div class="rank-row ${cls}" style="animation-delay:${i*35}ms">
+      <div class="pos">${medal||(i+1)}</div>
+      ${avatarHtml}
+      <div class="player-name">${p.nombre}${movHtml}${esNuevo?' <span class="badge b-green" style="font-size:9px;vertical-align:middle">NUEVO</span>':''}</div>
+      <div class="cell"><span class="badge b-green">${p.exactos||0}</span></div>
+      <div class="cell"><span class="badge b-gold">${p.aciertos_1x2||0}</span></div>
+      <div class="cell"><span class="badge b-gray">${p.pendientes||0}</span></div>
+      <div class="pts">${esNuevo?'<span style="color:var(--muted);font-size:14px">—</span>':(p.puntos||0)}</div>
+    </div>`;
+  }).join('');
+  renderStats(r);
+}
 
-  // Mejor por jornada
+function renderEstadisticasData(data) {
   const jornadas = data.mejorPorJornada || [];
-  if(!jornadas.length){
+  if (!jornadas.length) {
     document.getElementById('mejor-jornada-list').innerHTML='<div class="empty"><span class="empty-icon">🏅</span>Los datos aparecerán cuando comiencen los partidos</div>';
   } else {
     document.getElementById('mejor-jornada-list').innerHTML = jornadas.map(j => {
       const ganadores = j.ganadores.join(', ');
-      const av = AVATARS[0];
       return `<div style="display:flex;align-items:center;gap:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:12px 16px;margin-bottom:8px;">
         <div style="background:rgba(184,247,60,0.1);border:1px solid rgba(184,247,60,0.2);border-radius:8px;padding:8px 12px;text-align:center;min-width:56px;flex-shrink:0;">
-          <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em">Jornada</div>
+          <div style="font-size:9px;color:var(--green);text-transform:uppercase;letter-spacing:.07em">Jornada</div>
           <div style="font-family:var(--font-d);font-size:22px;color:var(--green)">${j.jornada}</div>
         </div>
         <div style="flex:1;min-width:0;">
@@ -771,58 +844,27 @@ async function cargarEstadisticas(){
   }
 }
 
+async function cargarEstadisticas(){
+  const data = await apiGet('estadisticas');
+  if (!data?.ok) return;
+  renderEstadisticasData(data);
+}
+
 async function cargarRanking(){
-  const data=await apiGet('ranking');
-  if(!data?.ok) return;
-  const r=data.ranking||[];
-  document.getElementById('s-part').textContent=r.length;
-  if(r[0]?.ultima_act) document.getElementById('s-ultima').textContent=r[0].ultima_act;
-  if(!r.length){
-    document.getElementById('ranking-list').innerHTML='<div class="empty"><span class="empty-icon">👥</span>Aún no hay participantes</div>';
-    renderStats([]); return;
-  }
-  document.getElementById('ranking-list').innerHTML=r.map((p,i)=>{
-    const av=AVATARS[i%AVATARS.length];
-    const ini=p.nombre.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase();
-    const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
-    const cls=i===0?'p1':i===1?'p2':i===2?'p3':'';
-    const fotoUrl=p.foto_url||'';
-    const avatarHtml=fotoUrl
-      ? `<div class="avatar" style="padding:0;overflow:hidden"><img src="${fotoUrl}" style="width:100%;height:100%;object-fit:cover;" /></div>`
-      : `<div class="avatar" style="background:${av.bg};color:${av.fg}">${ini}</div>`;
-    const esNuevo = (p.puntos||0) === 0 && (p.pendientes||0) === 104;
-    const mov = p.movimiento || '=';
-    let movHtml = '';
-    if (mov.startsWith('↑')) {
-      movHtml = `<span style="font-size:11px;color:var(--green);font-weight:600;margin-left:4px">${mov}</span>`;
-    } else if (mov.startsWith('↓')) {
-      movHtml = `<span style="font-size:11px;color:var(--red);font-weight:600;margin-left:4px">${mov}</span>`;
-    } else if (!esNuevo) {
-      movHtml = `<span style="font-size:11px;color:var(--muted);margin-left:4px">=</span>`;
-    }
-    return `<div class="rank-row ${cls}" style="animation-delay:${i*35}ms">
-      <div class="pos">${medal||(i+1)}</div>
-      ${avatarHtml}
-      <div class="player-name">
-        ${p.nombre}${movHtml}
-        ${esNuevo ? ' <span class="badge b-green" style="font-size:9px;vertical-align:middle">NUEVO</span>' : ''}
-      </div>
-      <div class="cell"><span class="badge b-green">${p.exactos||0}</span></div>
-      <div class="cell"><span class="badge b-gold">${p.aciertos_1x2||0}</span></div>
-      <div class="cell"><span class="badge b-gray">${p.pendientes||0}</span></div>
-      <div class="pts">${esNuevo ? '<span style="color:var(--muted);font-size:14px">—</span>' : (p.puntos||0)}</div>
-    </div>`;
-  }).join('');
-  renderStats(r);
+  const data = await apiGet('ranking');
+  if (!data?.ok) return;
+  cacheSet('ranking', data);
+  renderRankingData(data);
 }
 
 // ── FIXTURE ───────────────────────────────────────────────────
 async function cargarFixture(){
-  const data=await apiGet('fixture');
-  if(!data?.ok) return;
-  fixtureData=data.partidos||[];
+  const data = await apiGet('fixture');
+  if (!data?.ok) return;
+  cacheSet('fixture', data);
+  fixtureData = data.partidos || [];
   renderFixture(fixtureData);
-  if(currentUser) renderPron();
+  if (currentUser) renderPron();
 }
 
 let modoFixture = 'grupo';
