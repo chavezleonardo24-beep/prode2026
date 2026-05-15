@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Prode Mundial 2026</title>
+<title>Prode Neuquén 2026</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
@@ -419,12 +419,12 @@ function switchTab(tab){
 <header class="hero">
   <span class="hero-ball">⚽</span>
   <div class="hero-badge">🏆 Mundial 2026</div>
-  <div class="hero-title">PRODE<br/><em>CROMA</em><br/>2026</div>
+  <div class="hero-title">PRODE<br/><em>NEUQUÉN</em><br/>2026</div>
   <div class="hero-flags">🇺🇸 🇨🇦 🇲🇽</div>
   <div class="hero-sub">11 de junio · 19 de julio de 2026</div>
   <!-- CONTADOR REGRESIVO ARGENTINA -->
   <div id="contador-wrap" style="margin:20px auto 0;max-width:360px;background:rgba(184,247,60,0.06);border:1px solid rgba(184,247,60,0.15);border-radius:var(--r);padding:14px 16px;display:none;">
-    <div style="font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;text-align:center">🇦🇷 Próximo partido de Argentina</div>
+    <div id="cnt-label" style="font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;text-align:center">🌍 Falta para el Mundial 2026</div>
     <div style="display:flex;justify-content:center;gap:8px;" id="contador-boxes">
       <div style="text-align:center">
         <div style="font-family:var(--font-d);font-size:36px;color:var(--white);line-height:1" id="cnt-dias">00</div>
@@ -804,7 +804,7 @@ function switchTab(tab){
 </section>
 
 <div id="toast"></div>
-<footer>Prode Mundial 2026 · Actualización automática · Hecho con ❤️ en Neuquén</footer>
+<footer>Prode Neuquén 2026 · Actualización automática · Hecho con ❤️ en Neuquén</footer>
 
 <script>
 // ── BANDERAS ──────────────────────────────────────────────────
@@ -1550,56 +1550,91 @@ styleEl.textContent = `
 `;
 document.head.appendChild(styleEl);
 
-// ── CONTADOR REGRESIVO ARGENTINA ─────────────────────────────
+// ── CONTADOR REGRESIVO ───────────────────────────────────────
 
-// Partidos de Argentina del fixture oficial
+const INICIO_MUNDIAL = '2026-06-11T16:00:00'; // México vs Sudáfrica — primer partido
+
 const PARTIDOS_ARG = [
-  { fecha: '2026-06-16T22:00:00', rival: 'vs Argelia 🇩🇿', grupo: 'Grupo J' },
-  { fecha: '2026-06-22T14:00:00', rival: 'vs Austria 🇦🇹',  grupo: 'Grupo J' },
-  { fecha: '2026-06-27T23:00:00', rival: 'vs Jordania 🇯🇴', grupo: 'Grupo J' },
+  { fecha: '2026-06-16T22:00:00', rival: 'vs Argelia 🇩🇿',  grupo: 'Grupo J', duracion: 105 },
+  { fecha: '2026-06-22T14:00:00', rival: 'vs Austria 🇦🇹',   grupo: 'Grupo J', duracion: 105 },
+  { fecha: '2026-06-27T23:00:00', rival: 'vs Jordania 🇯🇴',  grupo: 'Grupo J', duracion: 105 },
 ];
 
 let contadorInterval = null;
 
 function iniciarContador() {
-  const ahora = new Date();
-  // Buscar próximo partido de Argentina que no haya pasado
-  const proximo = PARTIDOS_ARG.find(p => new Date(p.fecha) > ahora);
-
-  if (!proximo) {
-    // Ya jugó todos los partidos de grupos — ocultar
-    document.getElementById('contador-wrap').style.display = 'none';
-    return;
-  }
-
-  document.getElementById('contador-wrap').style.display = 'block';
-  document.getElementById('cnt-rival').textContent = proximo.rival + ' · ' + proximo.grupo;
+  const ahora   = new Date();
+  const mundial = new Date(INICIO_MUNDIAL);
+  const wrap    = document.getElementById('contador-wrap');
+  const label   = document.getElementById('contador-wrap').querySelector('.cnt-label');
 
   if (contadorInterval) clearInterval(contadorInterval);
 
+  // FASE 1 — Falta para que empiece el Mundial
+  if (ahora < mundial) {
+    wrap.style.display = 'block';
+    document.getElementById('cnt-label').textContent  = '🌍 Falta para el Mundial 2026';
+    document.getElementById('cnt-rival').textContent  = 'México vs Sudáfrica · Partido inaugural';
+    contadorInterval = setInterval(() => {
+      const diff = new Date(INICIO_MUNDIAL) - new Date();
+      if (diff <= 0) { clearInterval(contadorInterval); iniciarContador(); return; }
+      actualizarNums(diff);
+    }, 1000);
+    actualizarNums(new Date(INICIO_MUNDIAL) - ahora);
+    return;
+  }
+
+  // FASE 2 — Mundial en curso, buscar próximo partido de Argentina
+  const proximo = PARTIDOS_ARG.find(p => {
+    const fin = new Date(new Date(p.fecha).getTime() + p.duracion * 60000);
+    return fin > ahora;
+  });
+
+  if (!proximo) {
+    wrap.style.display = 'none';
+    return;
+  }
+
+  wrap.style.display = 'block';
+  const inicioPart = new Date(proximo.fecha);
+  const finPart    = new Date(inicioPart.getTime() + proximo.duracion * 60000);
+
+  // Partido en curso
+  if (ahora >= inicioPart && ahora < finPart) {
+    document.getElementById('cnt-label').textContent = '🇦🇷 ¡Argentina está jugando!';
+    document.getElementById('cnt-rival').textContent = proximo.rival + ' · ' + proximo.grupo;
+    document.getElementById('cnt-dias').textContent  = '⚽';
+    document.getElementById('cnt-horas').textContent = '⚽';
+    document.getElementById('cnt-min').textContent   = '⚽';
+    document.getElementById('cnt-seg').textContent   = '⚽';
+    // Revisar cada minuto si terminó
+    contadorInterval = setInterval(() => {
+      if (new Date() >= finPart) { clearInterval(contadorInterval); iniciarContador(); }
+    }, 30000);
+    return;
+  }
+
+  // Próximo partido de Argentina
+  document.getElementById('cnt-label').textContent = '🇦🇷 Próximo partido de Argentina';
+  document.getElementById('cnt-rival').textContent = proximo.rival + ' · ' + proximo.grupo;
+
   contadorInterval = setInterval(() => {
     const diff = new Date(proximo.fecha) - new Date();
-    if (diff <= 0) {
-      clearInterval(contadorInterval);
-      document.getElementById('cnt-dias').textContent = '00';
-      document.getElementById('cnt-horas').textContent = '00';
-      document.getElementById('cnt-min').textContent = '00';
-      document.getElementById('cnt-seg').textContent = '00';
-      document.getElementById('cnt-rival').textContent = '¡El partido está comenzando! ⚽';
-      // Reiniciar para buscar el siguiente
-      setTimeout(iniciarContador, 60000);
-      return;
-    }
-    const dias  = Math.floor(diff / (1000*60*60*24));
-    const horas = Math.floor((diff % (1000*60*60*24)) / (1000*60*60));
-    const mins  = Math.floor((diff % (1000*60*60)) / (1000*60));
-    const segs  = Math.floor((diff % (1000*60)) / 1000);
-
-    document.getElementById('cnt-dias').textContent  = String(dias).padStart(2,'0');
-    document.getElementById('cnt-horas').textContent = String(horas).padStart(2,'0');
-    document.getElementById('cnt-min').textContent   = String(mins).padStart(2,'0');
-    document.getElementById('cnt-seg').textContent   = String(segs).padStart(2,'0');
+    if (diff <= 0) { clearInterval(contadorInterval); iniciarContador(); return; }
+    actualizarNums(diff);
   }, 1000);
+  actualizarNums(new Date(proximo.fecha) - ahora);
+}
+
+function actualizarNums(diff) {
+  const dias  = Math.floor(diff / (1000*60*60*24));
+  const horas = Math.floor((diff % (1000*60*60*24)) / (1000*60*60));
+  const mins  = Math.floor((diff % (1000*60*60)) / (1000*60));
+  const segs  = Math.floor((diff % (1000*60)) / 1000);
+  document.getElementById('cnt-dias').textContent  = String(dias).padStart(2,'0');
+  document.getElementById('cnt-horas').textContent = String(horas).padStart(2,'0');
+  document.getElementById('cnt-min').textContent   = String(mins).padStart(2,'0');
+  document.getElementById('cnt-seg').textContent   = String(segs).padStart(2,'0');
 }
 
 // Iniciar al cargar
