@@ -450,7 +450,7 @@ function switchTab(tab){
 </header>
 
 <!-- CONFIG -->
-<div id="config-banner" style="margin:0 16px 20px;background:linear-gradient(135deg,#111318,#0A0B0D);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:16px;">
+<div id="config-banner" style="display:none;margin:0 16px 20px;background:linear-gradient(135deg,#111318,#0A0B0D);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:16px;">
   <label style="font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:8px;">🔗 URL de tu Google Apps Script</label>
   <div class="config-row">
     <input type="text" id="script-url" placeholder="https://script.google.com/macros/s/XXXXXX/exec"/>
@@ -491,7 +491,7 @@ function switchTab(tab){
       <div style="text-align:center">⏳</div>
       <div style="text-align:center">PTS</div>
     </div>
-    <div id="ranking-list"><div class="empty"><span class="empty-icon">🏆</span>Conectá el script para ver el ranking</div></div>
+    <div id="ranking-list"><div class="empty"><span class="empty-icon">🏆</span>Cargando ranking...</div></div>
   </div>
   <div style="margin-top:10px;font-size:11px;color:var(--muted);text-align:center">
     ✅ Exacto = 3 pts &nbsp;·&nbsp; 1X2 = 1 pt
@@ -535,7 +535,7 @@ function switchTab(tab){
     <button class="filter-btn" onclick="filtrarJornada(2,this)">Jornada 2</button>
     <button class="filter-btn" onclick="filtrarJornada(3,this)">Jornada 3</button>
   </div>
-  <div id="fixture-list"><div class="empty"><span class="empty-icon">📅</span>Conectá el script para ver el fixture</div></div>
+  <div id="fixture-list"><div class="empty"><span class="empty-icon">📅</span>Cargando fixture...</div></div>
 </section>
 
 <!-- PRONÓSTICOS -->
@@ -612,7 +612,7 @@ function switchTab(tab){
   <div>
     <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">📊 Puntos acumulados</div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px">
-      <div id="stats-list"><div class="empty"><span class="empty-icon">📊</span>Conectá el script para ver estadísticas</div></div>
+      <div id="stats-list"><div class="empty"><span class="empty-icon">📊</span>Cargando estadísticas...</div></div>
     </div>
   </div>
 </section>
