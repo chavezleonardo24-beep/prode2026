@@ -401,6 +401,7 @@ function switchTab(tab){
   if(btn)btn.classList.add('active');
   const view=document.getElementById('view-'+tab);
   if(view)view.classList.add('active');
+  if(tab==='estadisticas') cargarEstadisticas();
 }
 </script>
 
@@ -547,9 +548,23 @@ function switchTab(tab){
 <section id="view-estadisticas" class="view">
   <div class="section-hdr">
     <div class="section-title">ESTADÍSTICAS</div>
+    <button class="btn btn-ghost btn-sm" onclick="cargarEstadisticas()">↻ Actualizar</button>
   </div>
-  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px">
-    <div id="stats-list"><div class="empty"><span class="empty-icon">📊</span>Los datos aparecerán cuando comiencen los partidos</div></div>
+
+  <!-- MEJOR POR JORNADA -->
+  <div style="margin-bottom:20px">
+    <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">🏅 Mejor pronosticador por jornada</div>
+    <div id="mejor-jornada-list">
+      <div class="empty"><span class="empty-icon">🏅</span>Los datos aparecerán cuando comiencen los partidos</div>
+    </div>
+  </div>
+
+  <!-- RANKING GENERAL BARRAS -->
+  <div>
+    <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">📊 Puntos acumulados</div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px">
+      <div id="stats-list"><div class="empty"><span class="empty-icon">📊</span>Conectá el script para ver estadísticas</div></div>
+    </div>
   </div>
 </section>
 
@@ -646,6 +661,7 @@ let pronGuardados = {};
     document.getElementById('config-banner').style.display = 'none';
     cargarRanking();
     cargarFixture();
+    cargarEstadisticas();
   }
   document.querySelectorAll('.overlay').forEach(m=>{
     m.addEventListener('click',e=>{ if(e.target===m) m.classList.remove('on'); });
@@ -686,6 +702,33 @@ function setStatus(msg,type){
 }
 
 // ── RANKING ───────────────────────────────────────────────────
+async function cargarEstadisticas(){
+  const data = await apiGet('estadisticas');
+  if(!data?.ok) return;
+
+  // Mejor por jornada
+  const jornadas = data.mejorPorJornada || [];
+  if(!jornadas.length){
+    document.getElementById('mejor-jornada-list').innerHTML='<div class="empty"><span class="empty-icon">🏅</span>Los datos aparecerán cuando comiencen los partidos</div>';
+  } else {
+    document.getElementById('mejor-jornada-list').innerHTML = jornadas.map(j => {
+      const ganadores = j.ganadores.join(', ');
+      const av = AVATARS[0];
+      return `<div style="display:flex;align-items:center;gap:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:12px 16px;margin-bottom:8px;">
+        <div style="background:rgba(184,247,60,0.1);border:1px solid rgba(184,247,60,0.2);border-radius:8px;padding:8px 12px;text-align:center;min-width:56px;flex-shrink:0;">
+          <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em">Jornada</div>
+          <div style="font-family:var(--font-d);font-size:22px;color:var(--green)">${j.jornada}</div>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">🏅 ${ganadores}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">${j.puntos} punto${j.puntos!==1?'s':''} en la jornada</div>
+        </div>
+        <div style="font-family:var(--font-d);font-size:28px;color:var(--green);flex-shrink:0">${j.puntos}</div>
+      </div>`;
+    }).join('');
+  }
+}
+
 async function cargarRanking(){
   const data=await apiGet('ranking');
   if(!data?.ok) return;
