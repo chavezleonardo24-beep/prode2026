@@ -706,10 +706,22 @@ async function cargarRanking(){
       ? `<div class="avatar" style="padding:0;overflow:hidden"><img src="${fotoUrl}" style="width:100%;height:100%;object-fit:cover;" /></div>`
       : `<div class="avatar" style="background:${av.bg};color:${av.fg}">${ini}</div>`;
     const esNuevo = (p.puntos||0) === 0 && (p.pendientes||0) === 104;
+    const mov = p.movimiento || '=';
+    let movHtml = '';
+    if (mov.startsWith('↑')) {
+      movHtml = `<span style="font-size:11px;color:var(--green);font-weight:600;margin-left:4px">${mov}</span>`;
+    } else if (mov.startsWith('↓')) {
+      movHtml = `<span style="font-size:11px;color:var(--red);font-weight:600;margin-left:4px">${mov}</span>`;
+    } else if (!esNuevo) {
+      movHtml = `<span style="font-size:11px;color:var(--muted);margin-left:4px">=</span>`;
+    }
     return `<div class="rank-row ${cls}" style="animation-delay:${i*35}ms">
       <div class="pos">${medal||(i+1)}</div>
       ${avatarHtml}
-      <div class="player-name">${p.nombre}${esNuevo ? ' <span class="badge b-green" style="font-size:9px;vertical-align:middle">NUEVO</span>' : ''}</div>
+      <div class="player-name">
+        ${p.nombre}${movHtml}
+        ${esNuevo ? ' <span class="badge b-green" style="font-size:9px;vertical-align:middle">NUEVO</span>' : ''}
+      </div>
       <div class="cell"><span class="badge b-green">${p.exactos||0}</span></div>
       <div class="cell"><span class="badge b-gold">${p.aciertos_1x2||0}</span></div>
       <div class="cell"><span class="badge b-gray">${p.pendientes||0}</span></div>
