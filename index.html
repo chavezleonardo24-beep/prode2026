@@ -700,8 +700,6 @@ let pronGuardados = {};
 // Init
 (function(){
   if(SCRIPT_URL){
-    document.getElementById('script-url').value = SCRIPT_URL;
-    document.getElementById('config-banner').style.display = 'none';
     cargarRanking();
     cargarFixture();
     cargarEstadisticas();
@@ -709,6 +707,7 @@ let pronGuardados = {};
   document.querySelectorAll('.overlay').forEach(m=>{
     m.addEventListener('click',e=>{ if(e.target===m) m.classList.remove('on'); });
   });
+  iniciarContador();
 })();
 
 // ── API ───────────────────────────────────────────────────────
