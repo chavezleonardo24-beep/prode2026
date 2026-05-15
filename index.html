@@ -701,6 +701,75 @@ function switchTab(tab){
   </div>
 </div>
 
+<!-- MODAL PERFIL -->
+<div class="overlay" id="modal-perfil">
+  <div class="modal" style="max-width:420px;max-height:85vh;overflow-y:auto;">
+    <div class="modal-title">PERFIL <button class="modal-close" onclick="cerrarModal('perfil')">×</button></div>
+
+    <!-- Header perfil -->
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;">
+      <div id="perfil-foto-wrap" style="width:80px;height:107px;border-radius:10px;overflow:hidden;background:var(--bg3);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <span id="perfil-foto-ph" style="font-size:32px">👤</span>
+        <img id="perfil-foto-img" src="" style="display:none;width:100%;height:100%;object-fit:cover;"/>
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-family:var(--font-d);font-size:26px;letter-spacing:1px;color:var(--white)" id="perfil-modal-nombre"></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+          <span style="font-family:var(--font-d);font-size:22px;color:var(--green)" id="perfil-modal-pos"></span>
+          <span style="font-size:12px;color:var(--muted)">en el ranking</span>
+          <span id="perfil-modal-mov" style="font-size:12px;font-weight:600"></span>
+        </div>
+        <div style="font-family:var(--font-d);font-size:28px;color:var(--green);margin-top:4px" id="perfil-modal-pts"></div>
+        <div style="font-size:11px;color:var(--muted)" id="perfil-modal-desde"></div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:20px;">
+      <div style="background:rgba(184,247,60,0.08);border:1px solid rgba(184,247,60,0.15);border-radius:10px;padding:10px;text-align:center;">
+        <div style="font-family:var(--font-d);font-size:24px;color:var(--green)" id="p-exactos">0</div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Exactos</div>
+      </div>
+      <div style="background:rgba(255,208,96,0.08);border:1px solid rgba(255,208,96,0.15);border-radius:10px;padding:10px;text-align:center;">
+        <div style="font-family:var(--font-d);font-size:24px;color:var(--gold)" id="p-aciertos">0</div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">1X2</div>
+      </div>
+      <div style="background:rgba(255,85,85,0.06);border:1px solid rgba(255,85,85,0.12);border-radius:10px;padding:10px;text-align:center;">
+        <div style="font-family:var(--font-d);font-size:24px;color:var(--red)" id="p-errores">0</div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Errores</div>
+      </div>
+      <div style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center;">
+        <div style="font-family:var(--font-d);font-size:24px;color:var(--white)" id="p-pendientes">0</div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Pend.</div>
+      </div>
+    </div>
+
+    <!-- Barra de rendimiento -->
+    <div style="margin-bottom:20px;">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:6px;">
+        <span>Rendimiento</span>
+        <span id="p-pct">0%</span>
+      </div>
+      <div style="height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;">
+        <div id="p-barra" style="height:100%;background:linear-gradient(90deg,var(--green),#D4FF6A);border-radius:3px;transition:width .6s ease;width:0%"></div>
+      </div>
+    </div>
+
+    <!-- Botón editar si es el propio perfil -->
+    <div id="perfil-edit-btn" style="display:none;margin-bottom:16px;">
+      <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center" onclick="cerrarModal('perfil');abrirModal('editar-perfil')">✏️ Editar mis datos</button>
+    </div>
+
+    <!-- Historial de pronósticos -->
+    <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;">
+      📋 Historial de partidos
+    </div>
+    <div id="perfil-historial">
+      <div class="empty" style="padding:20px"><span class="empty-icon">⏳</span>Cargando...</div>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL CAMBIAR FOTO -->
 <div class="overlay" id="modal-cambiar-foto">
   <div class="modal">
@@ -1202,6 +1271,81 @@ function setStatus(msg,type){
 }
 
 // ── RANKING ───────────────────────────────────────────────────
+// ── PERFIL PÚBLICO ───────────────────────────────────────────
+async function verPerfil(nombre) {
+  // Abrir modal con loading
+  abrirModal('perfil');
+  document.getElementById('perfil-modal-nombre').textContent = nombre;
+  document.getElementById('perfil-historial').innerHTML = '<div class="empty" style="padding:20px"><span class="empty-icon">⏳</span>Cargando...</div>';
+
+  // Foto desde caché
+  const cached = localStorage.getItem('prode_foto_' + nombre);
+  const img = document.getElementById('perfil-foto-img');
+  const ph  = document.getElementById('perfil-foto-ph');
+  if (cached) { img.src=cached; img.style.display='block'; ph.style.display='none'; }
+  else { img.style.display='none'; ph.style.display='block'; }
+
+  // Cargar datos
+  const data = await apiGet('getPerfilPublico', '&nombre=' + encodeURIComponent(nombre));
+  if (!data?.ok) { document.getElementById('perfil-historial').innerHTML = '<div class="empty">Error al cargar perfil</div>'; return; }
+
+  // Foto real
+  if (data.fotoUrl) {
+    img.src = data.fotoUrl; img.style.display='block'; ph.style.display='none';
+    localStorage.setItem('prode_foto_' + nombre, data.fotoUrl);
+  }
+
+  // Datos básicos
+  document.getElementById('perfil-modal-pos').textContent = data.posicion !== '—' ? '#' + data.posicion : '—';
+  document.getElementById('perfil-modal-pts').textContent = (data.puntos||0) + ' pts';
+  document.getElementById('perfil-modal-desde').textContent = data.fechaReg ? 'Desde ' + data.fechaReg : '';
+
+  // Movimiento
+  const mov = data.movimiento || '=';
+  const movEl = document.getElementById('perfil-modal-mov');
+  if (mov.startsWith('↑'))      { movEl.textContent=mov; movEl.style.color='var(--green)'; }
+  else if (mov.startsWith('↓')) { movEl.textContent=mov; movEl.style.color='var(--red)'; }
+  else                          { movEl.textContent='='; movEl.style.color='var(--muted)'; }
+
+  // Stats
+  document.getElementById('p-exactos').textContent   = data.exactos   || 0;
+  document.getElementById('p-aciertos').textContent  = data.aciertos  || 0;
+  document.getElementById('p-errores').textContent   = data.errores   || 0;
+  document.getElementById('p-pendientes').textContent= data.pendientes|| 0;
+
+  // Barra rendimiento
+  const total = (data.exactos||0) + (data.aciertos||0) + (data.errores||0);
+  const pct   = total > 0 ? Math.round(((data.exactos||0) + (data.aciertos||0)) / total * 100) : 0;
+  document.getElementById('p-pct').textContent = pct + '%';
+  document.getElementById('p-barra').style.width = pct + '%';
+
+  // Botón editar si es el propio perfil
+  document.getElementById('perfil-edit-btn').style.display =
+    currentUser && currentUser.toLowerCase() === nombre.toLowerCase() ? 'block' : 'none';
+
+  // Historial
+  const h = data.historial || [];
+  if (!h.length) {
+    document.getElementById('perfil-historial').innerHTML = '<div class="empty" style="padding:16px"><span class="empty-icon">⏳</span>Sin partidos jugados aún</div>';
+    return;
+  }
+
+  document.getElementById('perfil-historial').innerHTML = h.map(p => {
+    const fl = flag(p.local), fv = flag(p.visitante);
+    const color = p.resultado==='exacto' ? 'var(--green)' : p.resultado==='1x2' ? 'var(--gold)' : 'var(--red)';
+    const icon  = p.resultado==='exacto' ? '✅' : p.resultado==='1x2' ? '🟡' : '❌';
+    const pts   = p.resultado==='exacto' ? '+3' : p.resultado==='1x2' ? '+1' : '0';
+    return `<div style="display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);font-size:12px;">
+      <div>
+        <div style="font-weight:500;margin-bottom:2px">${fl} ${p.local} vs ${p.visitante} ${fv}</div>
+        <div style="color:var(--muted)">Tu pronóstico: ${p.pred_l}-${p.pred_v} · Real: ${p.real_l}-${p.real_v}</div>
+      </div>
+      <div style="text-align:center;font-size:16px">${icon}</div>
+      <div style="font-family:var(--font-d);font-size:18px;color:${color};min-width:32px;text-align:right">${pts}</div>
+    </div>`;
+  }).join('');
+}
+
 function formatPesos(n) {
   return '$' + Math.round(n).toLocaleString('es-AR');
 }
@@ -1270,7 +1414,7 @@ function renderRankingData(data) {
     if (mov.startsWith('↑'))      movHtml = `<span style="font-size:11px;color:var(--green);font-weight:600;margin-left:4px">${mov}</span>`;
     else if (mov.startsWith('↓')) movHtml = `<span style="font-size:11px;color:var(--red);font-weight:600;margin-left:4px">${mov}</span>`;
     else if (!esNuevo)            movHtml = `<span style="font-size:11px;color:var(--muted);margin-left:4px">=</span>`;
-    return `<div class="rank-row ${cls}" style="animation-delay:${i*35}ms">
+    return `<div class="rank-row ${cls}" style="animation-delay:${i*35}ms;cursor:pointer;" onclick="verPerfil('${p.nombre.replace(/'/g,"\'")}')">
       <div class="pos">${medal||(i+1)}</div>
       ${avatarHtml}
       <div class="player-name">${p.nombre}${movHtml}${esNuevo?' <span class="badge b-green" style="font-size:9px;vertical-align:middle">NUEVO</span>':''}</div>
