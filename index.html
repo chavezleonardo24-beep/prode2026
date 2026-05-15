@@ -474,7 +474,14 @@ function switchTab(tab){
     <div class="section-title">FIXTURE</div>
     <button class="btn btn-ghost btn-sm" onclick="cargarFixture()">↻ Actualizar</button>
   </div>
-  <div class="filter-bar">
+  <!-- Selector de modo -->
+  <div style="display:flex;gap:6px;margin-bottom:10px;">
+    <button class="filter-btn active" id="modo-grupo-btn" onclick="setModoFixture('grupo',this)">Por grupo</button>
+    <button class="filter-btn" id="modo-jornada-btn" onclick="setModoFixture('jornada',this)">Por jornada</button>
+  </div>
+
+  <!-- Filtros por grupo -->
+  <div class="filter-bar" id="filtros-grupo">
     <button class="filter-btn active" onclick="filtrar('',this)">Todos</button>
     <button class="filter-btn" onclick="filtrar('A',this)">Grupo A</button>
     <button class="filter-btn" onclick="filtrar('B',this)">Grupo B</button>
@@ -484,7 +491,19 @@ function switchTab(tab){
     <button class="filter-btn" onclick="filtrar('F',this)">Grupo F</button>
     <button class="filter-btn" onclick="filtrar('G',this)">Grupo G</button>
     <button class="filter-btn" onclick="filtrar('H',this)">Grupo H</button>
+    <button class="filter-btn" onclick="filtrar('I',this)">Grupo I</button>
+    <button class="filter-btn" onclick="filtrar('J',this)">Grupo J</button>
+    <button class="filter-btn" onclick="filtrar('K',this)">Grupo K</button>
+    <button class="filter-btn" onclick="filtrar('L',this)">Grupo L</button>
     <button class="filter-btn" onclick="filtrar('ELIM',this)">Eliminatorias</button>
+  </div>
+
+  <!-- Filtros por jornada -->
+  <div class="filter-bar" id="filtros-jornada" style="display:none">
+    <button class="filter-btn active" onclick="filtrarJornada(0,this)">Todas</button>
+    <button class="filter-btn" onclick="filtrarJornada(1,this)">Jornada 1</button>
+    <button class="filter-btn" onclick="filtrarJornada(2,this)">Jornada 2</button>
+    <button class="filter-btn" onclick="filtrarJornada(3,this)">Jornada 3</button>
   </div>
   <div id="fixture-list"><div class="empty"><span class="empty-icon">📅</span>Conectá el script para ver el fixture</div></div>
 </section>
@@ -783,8 +802,29 @@ async function cargarFixture(){
   if(currentUser) renderPron();
 }
 
+let modoFixture = 'grupo';
+
+function setModoFixture(modo, btn) {
+  modoFixture = modo;
+  document.getElementById('filtros-grupo').style.display   = modo === 'grupo'   ? 'flex' : 'none';
+  document.getElementById('filtros-jornada').style.display = modo === 'jornada' ? 'flex' : 'none';
+  document.getElementById('modo-grupo-btn').classList.toggle('active',   modo === 'grupo');
+  document.getElementById('modo-jornada-btn').classList.toggle('active', modo === 'jornada');
+  if (modo === 'grupo') {
+    // Reset filtro grupo a "Todos"
+    document.querySelectorAll('#filtros-grupo .filter-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelector('#filtros-grupo .filter-btn').classList.add('active');
+    renderFixture(fixtureData);
+  } else {
+    // Reset filtro jornada a "Todas"
+    document.querySelectorAll('#filtros-jornada .filter-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelector('#filtros-jornada .filter-btn').classList.add('active');
+    renderFixtureJornada(fixtureData);
+  }
+}
+
 function filtrar(grupo,btn){
-  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('#filtros-grupo .filter-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   const lista=grupo==='ELIM'
     ? fixtureData.filter(p=>p.jornada>48)
@@ -792,6 +832,66 @@ function filtrar(grupo,btn){
       ? fixtureData.filter(p=>p.grupo===grupo)
       : fixtureData;
   renderFixture(lista);
+}
+
+function filtrarJornada(jornada, btn) {
+  document.querySelectorAll('#filtros-jornada .filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const lista = jornada === 0 ? fixtureData : fixtureData.filter(p => p.jornada == jornada);
+  renderFixtureJornada(lista);
+}
+
+function renderFixtureJornada(partidos) {
+  if(!partidos?.length){
+    document.getElementById('fixture-list').innerHTML='<div class="empty"><span class="empty-icon">📅</span>No hay partidos para mostrar</div>'; return;
+  }
+
+  // Agrupar por fecha
+  const porFecha = {};
+  partidos.forEach(m => {
+    const fecha = formatFecha(m.fecha);
+    if (!porFecha[fecha]) porFecha[fecha] = [];
+    porFecha[fecha].push(m);
+  });
+
+  let html = '';
+  Object.keys(porFecha).sort((a,b) => {
+    // Ordenar por fecha dd/MM/yyyy
+    const [da,ma,ya] = a.split('/'); const [db,mb,yb] = b.split('/');
+    return new Date(ya,ma-1,da) - new Date(yb,mb-1,db);
+  }).forEach(fecha => {
+    const ms = porFecha[fecha];
+    html += `<div class="group-hdr">${fecha}</div>`;
+    ms.forEach(m => {
+      const jugado = m.estado==='FT'||(m.gol_l!==''&&m.gol_l!==undefined&&m.gol_l!==null&&m.gol_l!=='');
+      const live   = m.estado==='1H'||m.estado==='2H'||m.estado==='HT';
+      const fl=flag(m.local), fv=flag(m.visitante);
+      html += `<div class="match-card">
+        <div class="match-inner">
+          <div style="display:flex;align-items:center;justify-content:flex-end;gap:6px;flex:1">
+            <div style="font-size:14px;font-weight:600;text-align:right">${m.local}</div>
+            <div style="font-size:22px;flex-shrink:0">${fl}</div>
+          </div>
+          <div class="match-center">
+            ${jugado||live
+              ? `<div class="score-row">
+                  <div class="score-pill">${m.gol_l??'—'}</div>
+                  <span class="score-sep">:</span>
+                  <div class="score-pill">${m.gol_v??'—'}</div>
+                 </div>
+                 ${live?'<span class="badge b-live" style="font-size:9px;margin-top:2px">EN VIVO</span>':'<span class="badge b-gray" style="font-size:9px;margin-top:2px">Final</span>'}`
+              : `<div class="match-date">${formatHora(m.hora)} hs</div>
+                 <div style="font-size:10px;color:var(--muted)">Grupo ${m.grupo}</div>`}
+          </div>
+          <div style="display:flex;align-items:center;justify-content:flex-start;gap:6px;flex:1">
+            <div style="font-size:22px;flex-shrink:0">${fv}</div>
+            <div style="font-size:14px;font-weight:600;text-align:left">${m.visitante}</div>
+          </div>
+        </div>
+      </div>`;
+    });
+  });
+  document.getElementById('fixture-list').innerHTML = html;
 }
 
 function renderFixture(partidos){
