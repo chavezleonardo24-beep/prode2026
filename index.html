@@ -124,6 +124,7 @@ body{font-family:var(--font-b);background:var(--bg);color:var(--white);min-heigh
   transition:all .15s;
 }
 .nav-tab.active{color:var(--green);border-bottom-color:var(--green)}
+.nav-tab[data-auth="true"]{display:none}
 .nav-tab:hover:not(.active){color:var(--white)}
 
 /* VIEWS */
@@ -477,16 +478,16 @@ function switchTab(tab){
 <!-- NAV -->
 <div class="nav-wrap">
   <nav class="nav">
-    <button class="nav-tab active" data-tab="ranking" onclick="switchTab('ranking')">🏆 Ranking</button>
-    <button class="nav-tab" data-tab="fixture" onclick="switchTab('fixture')">📅 Fixture</button>
-    <button class="nav-tab" data-tab="pronosticos" onclick="switchTab('pronosticos')">📝 Pronósticos</button>
-    <button class="nav-tab" data-tab="estadisticas" onclick="switchTab('estadisticas')">📊 Estadísticas</button>
+    <button class="nav-tab" data-tab="ranking" data-auth="true" onclick="switchTab('ranking')">🏆 Ranking</button>
+    <button class="nav-tab active" data-tab="fixture" onclick="switchTab('fixture')">📅 Fixture</button>
+    <button class="nav-tab" data-tab="pronosticos" data-auth="true" onclick="switchTab('pronosticos')">📝 Pronósticos</button>
+    <button class="nav-tab" data-tab="estadisticas" data-auth="true" onclick="switchTab('estadisticas')">📊 Estadísticas</button>
     <button class="nav-tab" data-tab="reglas" onclick="switchTab('reglas')">📋 Reglas</button>
   </nav>
 </div>
 
 <!-- RANKING -->
-<section id="view-ranking" class="view active">
+<section id="view-ranking" class="view">
   <div class="stats-top">
     <div class="stat-card"><div class="stat-label">Participantes</div><div class="stat-value" id="s-part">—</div></div>
     <div class="stat-card"><div class="stat-label">Partidos jugados</div><div class="stat-value" id="s-jugados">0</div></div>
@@ -515,7 +516,7 @@ function switchTab(tab){
 </section>
 
 <!-- FIXTURE -->
-<section id="view-fixture" class="view">
+<section id="view-fixture" class="view active">
   <div class="section-hdr">
     <div class="section-title">FIXTURE</div>
     <button class="btn btn-ghost btn-sm" onclick="cargarFixture()">↻ Actualizar</button>
@@ -1823,10 +1824,20 @@ function actualizarHeroBtns() {
     if(heroNombre)  heroNombre.textContent     = currentUser;
     const menuNombre = document.getElementById('menu-nombre-display');
     if(menuNombre) menuNombre.textContent = currentUser;
+    // Mostrar pestañas protegidas
+    document.querySelectorAll('.nav-tab[data-auth="true"]').forEach(t => t.style.display = 'block');
+    // Si estaba en fixture o reglas, ir a ranking
+    const tabActiva = document.querySelector('.nav-tab.active');
+    if (!tabActiva || tabActiva.dataset.tab === 'fixture' || tabActiva.dataset.tab === 'reglas') {
+      switchTab('ranking');
+    }
   } else {
     if(btnUnirme)   btnUnirme.style.display   = 'inline-flex';
     if(btnLogin)    btnLogin.style.display     = 'inline-flex';
     if(btnLogueado) btnLogueado.style.display  = 'none';
+    // Ocultar pestañas protegidas y mostrar fixture
+    document.querySelectorAll('.nav-tab[data-auth="true"]').forEach(t => t.style.display = 'none');
+    switchTab('fixture');
   }
 }
 
