@@ -454,7 +454,7 @@ function switchTab(tab){
     <button class="btn btn-ghost" id="btn-login" onclick="abrirLoginRapido()">🔑 Iniciar sesión</button>
     <div id="btn-logueado" style="display:none;position:relative;">
       <button onclick="toggleMenuUsuario()" style="background:rgba(184,247,60,0.08);border:1px solid rgba(184,247,60,0.2);border-radius:999px;padding:10px 20px;font-size:14px;font-weight:500;color:var(--green);cursor:pointer;display:flex;align-items:center;gap:8px;">
-        ⚽ <span id="hero-nombre-usuario"></span> <span style="font-size:10px;opacity:.6">▼</span>
+        👤 Mi Cuenta <span style="font-size:10px;opacity:.6">▼</span>
       </button>
       <div id="menu-usuario" style="display:none;position:fixed;top:auto;left:50%;transform:translateX(-50%);background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);min-width:220px;overflow:hidden;z-index:999;box-shadow:0 8px 32px rgba(0,0,0,0.6);">
         <div style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:12px;color:var(--muted)">
@@ -1701,8 +1701,19 @@ function toggleMenuUsuario() {
   const menu = document.getElementById('menu-usuario');
   const btn  = document.getElementById('btn-logueado');
   if (menu.style.display === 'none' || !menu.style.display) {
-    const rect = btn.getBoundingClientRect();
-    menu.style.top  = (rect.bottom + 8) + 'px';
+    const rect       = btn.getBoundingClientRect();
+    const menuHeight = 220; // altura estimada del menú
+    const spaceAbajo = window.innerHeight - rect.bottom;
+
+    if (spaceAbajo < menuHeight) {
+      // Poco espacio abajo — abrir hacia arriba
+      menu.style.top    = 'auto';
+      menu.style.bottom = (window.innerHeight - rect.top + 8) + 'px';
+    } else {
+      // Abrir hacia abajo
+      menu.style.bottom = 'auto';
+      menu.style.top    = (rect.bottom + 8) + 'px';
+    }
     menu.style.display = 'block';
   } else {
     menu.style.display = 'none';
