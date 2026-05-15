@@ -407,12 +407,13 @@ function switchTab(tab){
 <!-- HERO -->
 <header class="hero">
   <span class="hero-ball">⚽</span>
-  <div class="hero-badge">🏆 Mundial 2026 · Prode Croma</div>
+  <div class="hero-badge">🏆 Mundial 2026</div>
   <div class="hero-title">PRODE<br/><em>CROMA</em><br/>2026</div>
   <div class="hero-flags">🇺🇸 🇨🇦 🇲🇽</div>
   <div class="hero-sub">11 de junio · 19 de julio de 2026</div>
   <div class="hero-btns">
     <button class="btn btn-primary" onclick="abrirModal('registro')">+ Unirme al prode</button>
+    <button class="btn btn-ghost" onclick="abrirLoginRapido()">🔑 Iniciar sesión</button>
     <button class="btn btn-ghost" onclick="switchTab('fixture')">Ver fixture →</button>
   </div>
 </header>
@@ -557,6 +558,20 @@ function switchTab(tab){
   <button class="btn btn-primary btn-sm" onclick="guardarTodos()">💾 Guardar todo</button>
 </div>
 
+<!-- MODAL LOGIN RÁPIDO -->
+<div class="overlay" id="modal-login">
+  <div class="modal">
+    <div class="modal-title">INICIAR SESIÓN <button class="modal-close" onclick="cerrarModal('login')">×</button></div>
+    <div class="field"><label>Nombre</label><input type="text" id="quick-nombre" placeholder="Tu nombre..." autocomplete="off"/></div>
+    <div class="field"><label>PIN de 4 números</label><input type="number" id="quick-pin" placeholder="1234" maxlength="4"/></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="cerrarModal('login')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-login-rapido" onclick="loginRapido()">Entrar →</button>
+    </div>
+    <div class="modal-note">¿Aún no te registraste? <span style="color:var(--green);cursor:pointer" onclick="cerrarModal('login');abrirModal('registro')">Unirme al prode →</span></div>
+  </div>
+</div>
+
 <!-- MODAL REGISTRO -->
 <div class="overlay" id="modal-registro">
   <div class="modal">
@@ -689,14 +704,15 @@ async function cargarRanking(){
     const avatarHtml=fotoUrl
       ? `<div class="avatar" style="padding:0;overflow:hidden"><img src="${fotoUrl}" style="width:100%;height:100%;object-fit:cover;" /></div>`
       : `<div class="avatar" style="background:${av.bg};color:${av.fg}">${ini}</div>`;
+    const esNuevo = (p.puntos||0) === 0 && (p.pendientes||0) === 104;
     return `<div class="rank-row ${cls}" style="animation-delay:${i*35}ms">
       <div class="pos">${medal||(i+1)}</div>
       ${avatarHtml}
-      <div class="player-name">${p.nombre}</div>
+      <div class="player-name">${p.nombre}${esNuevo ? ' <span class="badge b-green" style="font-size:9px;vertical-align:middle">NUEVO</span>' : ''}</div>
       <div class="cell"><span class="badge b-green">${p.exactos||0}</span></div>
       <div class="cell"><span class="badge b-gold">${p.aciertos_1x2||0}</span></div>
       <div class="cell"><span class="badge b-gray">${p.pendientes||0}</span></div>
-      <div class="pts">${p.puntos||0}</div>
+      <div class="pts">${esNuevo ? '<span style="color:var(--muted);font-size:14px">—</span>' : (p.puntos||0)}</div>
     </div>`;
   }).join('');
   renderStats(r);
@@ -969,6 +985,39 @@ async function subirFoto() {
     }
   };
   reader.readAsDataURL(fotoFileLocal);
+}
+
+function abrirLoginRapido() {
+  // Si ya está logueado, ir directo a pronósticos
+  if (currentUser) {
+    switchTab('pronosticos');
+    return;
+  }
+  abrirModal('login');
+}
+
+async function loginRapido() {
+  const n   = document.getElementById('quick-nombre').value.trim();
+  const pin = document.getElementById('quick-pin').value.trim();
+  if (!n)   { document.getElementById('quick-nombre').focus(); return; }
+  if (!pin) { toast('Ingresá tu PIN', true); return; }
+
+  const btn = document.getElementById('btn-login-rapido');
+  btn.innerHTML = '<span class="spin"></span> Verificando...';
+  btn.disabled = true;
+
+  const v = await apiGet('verificarPin', '&nombre=' + encodeURIComponent(n) + '&pin=' + encodeURIComponent(pin));
+  btn.innerHTML = 'Entrar →'; btn.disabled = false;
+
+  if (!v?.ok) { toast(v?.mensaje || 'Nombre o PIN incorrecto ❌', true); return; }
+
+  // Cerrar modal y hacer login
+  cerrarModal('login');
+  document.getElementById('login-nombre').value = n;
+  document.getElementById('login-pin').value = pin;
+  switchTab('pronosticos');
+  loginUser();
+  toast('¡Bienvenido ' + n + '! ⚽');
 }
 
 function toast(msg,err=false){
