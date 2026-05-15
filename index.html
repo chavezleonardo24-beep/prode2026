@@ -495,6 +495,47 @@ function switchTab(tab){
     <div class="stat-card"><div class="stat-label">Total partidos</div><div class="stat-value">104</div></div>
     <div class="stat-card"><div class="stat-label">Actualización</div><div class="stat-value sm" id="s-ultima">—</div></div>
   </div>
+  <!-- POZO -->
+  <div style="background:linear-gradient(135deg,rgba(184,247,60,0.08),rgba(184,247,60,0.03));border:1px solid rgba(184,247,60,0.2);border-radius:var(--r);padding:16px;margin-bottom:16px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <div>
+        <div style="font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px">💰 Pozo total acumulado</div>
+        <div style="font-family:var(--font-d);font-size:36px;color:var(--white)" id="pozo-total">$0</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px">Inscripción</div>
+        <div style="font-size:18px;font-weight:600;color:var(--white)">$30.000</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+      <div style="background:rgba(255,208,96,0.1);border:1px solid rgba(255,208,96,0.2);border-radius:10px;padding:10px;text-align:center;">
+        <div style="font-size:18px;margin-bottom:4px">🥇</div>
+        <div style="font-size:10px;color:var(--gold);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">1er lugar · 60%</div>
+        <div style="font-family:var(--font-d);font-size:20px;color:var(--gold)" id="premio-1">$0</div>
+      </div>
+      <div style="background:rgba(192,192,192,0.08);border:1px solid rgba(192,192,192,0.15);border-radius:10px;padding:10px;text-align:center;">
+        <div style="font-size:18px;margin-bottom:4px">🥈</div>
+        <div style="font-size:10px;color:#C0C0C0;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">2do lugar · 30%</div>
+        <div style="font-family:var(--font-d);font-size:20px;color:#C0C0C0" id="premio-2">$0</div>
+      </div>
+      <div style="background:rgba(205,127,50,0.08);border:1px solid rgba(205,127,50,0.15);border-radius:10px;padding:10px;text-align:center;">
+        <div style="font-size:18px;margin-bottom:4px">🥉</div>
+        <div style="font-size:10px;color:#CD7F32;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">3er lugar · 10%</div>
+        <div style="font-family:var(--font-d);font-size:20px;color:#CD7F32" id="premio-3">$0</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PODIO -->
+  <div id="podio-wrap" style="display:none;margin-bottom:16px;">
+    <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;text-align:center">🏆 Podio actual</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:end;">
+      <div id="podio-2" style="text-align:center"></div>
+      <div id="podio-1" style="text-align:center"></div>
+      <div id="podio-3" style="text-align:center"></div>
+    </div>
+  </div>
+
   <div class="section-hdr">
     <div class="section-title">TABLA</div>
     <button class="btn btn-ghost btn-sm" onclick="cargarRanking()">↻ Actualizar</button>
@@ -1001,10 +1042,55 @@ function setStatus(msg,type){
 }
 
 // ── RANKING ───────────────────────────────────────────────────
+function formatPesos(n) {
+  return '$' + Math.round(n).toLocaleString('es-AR');
+}
+
+function renderPozo(participantes) {
+  const INSCRIPCION = 30000;
+  const pozo = participantes * INSCRIPCION;
+  document.getElementById('pozo-total').textContent = formatPesos(pozo);
+  document.getElementById('premio-1').textContent   = formatPesos(pozo * 0.60);
+  document.getElementById('premio-2').textContent   = formatPesos(pozo * 0.30);
+  document.getElementById('premio-3').textContent   = formatPesos(pozo * 0.10);
+}
+
+function renderPodio(ranking) {
+  const wrap = document.getElementById('podio-wrap');
+  const conPuntos = ranking.filter(r => (r.puntos||0) > 0);
+  if (conPuntos.length < 3) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+
+  const podioData = [
+    { el: 'podio-1', p: conPuntos[0], medal: '🥇', color: '#FFD060', altura: '100px', prize: '60%' },
+    { el: 'podio-2', p: conPuntos[1], medal: '🥈', color: '#C0C0C0', altura: '80px',  prize: '30%' },
+    { el: 'podio-3', p: conPuntos[2], medal: '🥉', color: '#CD7F32', altura: '60px',  prize: '10%' },
+  ];
+
+  podioData.forEach(({ el, p, medal, color, altura, prize }) => {
+    const foto  = p.foto_url || localStorage.getItem('prode_foto_' + p.nombre) || '';
+    const ini   = p.nombre.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase();
+    const av    = AVATARS[podioData.indexOf(podioData.find(x=>x.el===el)) % AVATARS.length];
+    const avatar = foto
+      ? `<img src="${foto}" style="width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid ${color};margin:0 auto 6px;display:block;"/>`
+      : `<div style="width:52px;height:52px;border-radius:50%;background:${av.bg};color:${av.fg};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;border:2px solid ${color};margin:0 auto 6px;">${ini}</div>`;
+    document.getElementById(el).innerHTML = `
+      <div style="margin-bottom:6px">${avatar}</div>
+      <div style="font-size:12px;font-weight:600;color:var(--white);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.nombre}</div>
+      <div style="font-family:var(--font-d);font-size:16px;color:${color};margin-bottom:4px">${p.puntos} pts</div>
+      <div style="background:${color};border-radius:0 0 8px 8px;height:${altura};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;">
+        <div style="font-size:22px">${medal}</div>
+        <div style="font-size:10px;font-weight:600;color:#0A0B0D">${prize}</div>
+      </div>`;
+  });
+}
+
 function renderRankingData(data) {
   const r = data.ranking || [];
   document.getElementById('s-part').textContent = r.length;
   if (r[0]?.ultima_act) document.getElementById('s-ultima').textContent = r[0].ultima_act;
+  renderPozo(r.length);
+  renderPodio(r);
   if (!r.length) {
     document.getElementById('ranking-list').innerHTML='<div class="empty"><span class="empty-icon">👥</span>Aún no hay participantes</div>';
     renderStats([]); return;
